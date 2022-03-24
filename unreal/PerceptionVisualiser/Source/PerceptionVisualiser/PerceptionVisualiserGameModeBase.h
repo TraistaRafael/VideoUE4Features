@@ -45,6 +45,18 @@ public:
 
 	void ReadMotionData();
 
+	/**
+	* OpenCV expands objects too much on Z, making the 3D visualisation look bad. 
+	* This functions shrinks points in 3D space on Z axis (Z axis in openCV = Y axis in UE4)
+	*/
+	void ShrinkMotionObject(TArray<FVector>& motionPoints);
+
+	/**
+	* Bring motion object with feet on ground
+	* Find minimum Z value and move all points according
+	*/
+	void BringMotionDataOnGround(TArray<FVector>& motionPoints);
+
 	long Frame = 0;
 	long Index = 0;
 	TArray<TArray<FVector>> MotionPoints;	

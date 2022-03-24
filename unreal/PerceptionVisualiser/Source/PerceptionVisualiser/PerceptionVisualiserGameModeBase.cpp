@@ -83,7 +83,7 @@ APerceptionVisualiserGameModeBase::APerceptionVisualiserGameModeBase(const FObje
 void APerceptionVisualiserGameModeBase::Tick(float DeltaSeconds)
 {
     UE_LOG(LogTemp, Display, TEXT("APerceptionVisualiserGameModeBas::Tick"));
-    FVector origin(-400, -600, -100);
+    FVector origin(-400, -600, 0);
 
     if (Frame % 5 == 0) 
     {
@@ -91,7 +91,15 @@ void APerceptionVisualiserGameModeBase::Tick(float DeltaSeconds)
         TArray<FVector> FramePoints = MotionPoints[Index];
 
         for (int j = 0; j < FramePoints.Num(); j++) {
-            DrawDebugPoint(GetWorld(), origin + FramePoints[j], 15, FColor(255, 0, 0), true);
+            DrawDebugPoint(
+                GetWorld(), 
+                origin + FramePoints[j], 
+                10, 
+                FColor(255, 0, 0), 
+                true,
+                100,
+                255
+            );
 
             if (BoneMap.Contains(j)) {
                 for (int k = 0; k < BoneMap[j].Num(); k++) {
@@ -102,7 +110,7 @@ void APerceptionVisualiserGameModeBase::Tick(float DeltaSeconds)
                         FColor(0, 255, 0),
                         true,
                         255,
-                        4);
+                        7);
                 }     
             }
         }
@@ -123,30 +131,62 @@ void APerceptionVisualiserGameModeBase::BeginPlay()
     ReadMotionData();
 }
 
+void APerceptionVisualiserGameModeBase::ShrinkMotionObject(TArray<FVector> &motionPoints)
+{
+    if (motionPoints.Num() == 0) return;
+
+    float minY = motionPoints[0].Y;
+    float maxY = motionPoints[0].Y;
+
+    for (int i = 0; i < motionPoints.Num(); i++) {
+        if (motionPoints[i].Y > maxY) {
+            maxY = motionPoints[i].Y;
+        }
+        if (motionPoints[i].Y < minY) {
+            minY = motionPoints[i].Y;
+        }
+    }
+
+    // Make motions points 10x thiner
+    float maxExpand = FMath::Abs(maxY - minY) / 10;
+    for (int i = 0; i < motionPoints.Num(); i++) {
+        motionPoints[i].Y = ((motionPoints[i].Y - minY) / (maxY - minY)) * maxExpand;
+    }
+}
+
+void APerceptionVisualiserGameModeBase::BringMotionDataOnGround(TArray<FVector>& motionPoints)
+{
+    if (motionPoints.Num() == 0) return;
+
+    float minZ = motionPoints[0].Z;
+
+    for (int i = 0; i < motionPoints.Num(); i++) {
+        if (motionPoints[i].Z < minZ) {
+            minZ = motionPoints[i].Z;
+        }
+    }
+
+    for (int i = 0; i < motionPoints.Num(); i++) {
+        motionPoints[i].Z -= minZ;
+    }
+}
+
 void APerceptionVisualiserGameModeBase::ReadMotionData()
 {
     TSharedPtr<FJsonObject> jsonObject = MakeShareable(new FJsonObject);
 
-    FString jsonPath = "C:/Projects/UE4VideoFeatures/shared/motion_data.json";
-
     FString jsonStr;
-    FFileHelper::LoadFileToString(jsonStr, TEXT("C:/Projects/UE4VideoFeatures/shared/motion_data.json"));
-   // TSharedRef<FJsonStringReader> jsonReader = FJsonStringReader::Create(jsonStr);
+    FFileHelper::LoadFileToString(jsonStr, TEXT(MOTION_DATA_JSON));
 
     TSharedRef<TJsonReader<>> jsonReader = TJsonReaderFactory<>::Create(jsonStr);
 
-    //UE_LOG(LogTemp, Error, TEXT("APerceptionVisualiserGameModeBase::ReadMotionData() Execution path: %s"), FGenericPlatformProcess::ExecutablePath());
-
     if (!FJsonSerializer::Deserialize(jsonReader, jsonObject))
     {
-        //FString Status = JsonParsed->GetStringField("Status");
         UE_LOG(LogTemp, Error, TEXT("APerceptionVisualiserGameModeBase::ReadMotionData() Json deserialize failed with status"));
         return;
     }
 
     TArray<TSharedPtr<FJsonValue>> framesArray = jsonObject->GetArrayField(FString("data"));
-    
-    //TArray<TSharedPtr < FJsonValue
     for (int i=0; i<framesArray.Num(); i++) 
     {
         TArray<FVector> FramePoints;
@@ -156,36 +196,18 @@ void APerceptionVisualiserGameModeBase::ReadMotionData()
             MotionPoints.Add(FramePoints);
             continue;
         }
-        //FGenericPlatformProcess::Sleep(0.2);
-        //FPlatformProcess::Sleep(0.2);
-
-        //FlushPersistentDebugLines(GetWorld());
 
         TArray<TSharedPtr<FJsonValue>> lmList = framesArray[i]->AsObject()->GetArrayField("lmList");
-       // FVector prevLocation;
-
         for (int j = 0; j < lmList.Num(); j++) {
             double x = lmList[j]->AsArray()[1]->AsNumber();
             double y = lmList[j]->AsArray()[2]->AsNumber();
             double z = lmList[j]->AsArray()[3]->AsNumber();
-
             FVector location(x, z, y);
-            //FVector origin(-400, -600, -100);
             FramePoints.Add(location);
-           /* DrawDebugPoint(GetWorld(), origin + location, 5, FColor(255, 0, 0), true);
-
-            if (j > 0) {
-                DrawDebugLine(
-                    GetWorld(), 
-                    origin + location, 
-                    origin + prevLocation, 
-                    FColor(0, 255, 0), 
-                    true,
-                    0,
-                    4);
-                prevLocation = location;
-            }*/
         }
+
+        ShrinkMotionObject(FramePoints);
+        BringMotionDataOnGround(FramePoints);
         MotionPoints.Add(FramePoints);
     }
     
