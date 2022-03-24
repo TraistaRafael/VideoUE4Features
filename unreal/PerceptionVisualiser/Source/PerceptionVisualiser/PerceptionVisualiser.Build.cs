@@ -8,7 +8,7 @@ public class PerceptionVisualiser : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "Json"});
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

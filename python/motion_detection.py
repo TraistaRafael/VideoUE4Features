@@ -3,12 +3,14 @@ import cv2
 from cvzone.PoseModule import PoseDetector
 import json
 
-# cap = cv2.VideoCapture(0)
-cap = cv2.VideoCapture("assets/short_1.mp4")
+#cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture("assets/short_2.mp4")
 detector = PoseDetector()
 
-collectedData = []
+collectedData = {"data": []}
 frame = 0
+
+maxFrames = 15000
 
 while True:
   success, img = cap.read()
@@ -17,17 +19,21 @@ while True:
 
   img = detector.findPose(img)
   lmList, bboxInfo = detector.findPosition(img)
-  collectedData.append({})
+
   if bboxInfo:
-    collectedData.append({
+    collectedData["data"].append({
       "bbox": bboxInfo,
-      "lmList": lmList
+      "lmList": [[item[0], item[1], img.shape[0] - item[2], item[3]] for item in lmList]
     })
   else:
-    collectedData.append({})
+    collectedData["data"].append(None)
 
   cv2.imshow("Image", img)
   cv2.waitKey(1)
+
+  frame += 1
+  if frame > maxFrames:
+    break;
 
 
 # Write collected data to output file
